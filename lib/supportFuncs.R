@@ -13,12 +13,7 @@
 
 # ------------------------------------------------------------------------------
 ### ADMIN ###
-
-# Sets repo path
-path='/Users/vickihurd/Library/CloudStorage/OneDrive-SharedLibraries-UCB-O365/Ultrasound - Documents/Aim 2 - MDRS Cardiac Teleguidance Study/Results'
-setwd(path)
-# Read in all pertinent libraries
-library(readxl)
+# Read libraries here if necessary
 
 # ------------------------------------------------------------------------------
 
@@ -50,7 +45,6 @@ getParticipantID <- function(crewRole,weekNumber) {
   # Return ID
   ID 
 }
-
 
 getWeek <- function(submitDate) {
   # Leverage 3 if-else statements to identify week number
