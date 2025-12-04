@@ -10,6 +10,7 @@
 #   2) getWeek: gets mission week (1, 2, or 3) based on survey submit date
 #   3) convertDate: converts date from numerical native Excel to R date object 
 #   4) cleanQualtrics: cleans raw survey data from Qualtrics
+#   5) getMode: gets mode of column since no native mode in R
 
 # ------------------------------------------------------------------------------
 ### ADMIN ###
@@ -100,4 +101,9 @@ cleanQualtrics <- function(df) {
   
   # Return dataframe
   return(df)
+}
+
+getMode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
 }
