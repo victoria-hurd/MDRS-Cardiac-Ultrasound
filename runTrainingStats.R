@@ -26,6 +26,7 @@ library(tidyr)
 library(ggplot2)
 library(ggpubr)
 library(rstatix)
+library(outliers)
 # Sets repo path
 setwd(gitPath)
 
@@ -55,10 +56,12 @@ df_wide <- df %>%
 # Tabulate - look at before vs after scores
 means <- df_wide %>%
   summarise(numSamples = length(After),
-    Before = mean(Before, na.rm = TRUE),
-    After = mean(After, na.rm = TRUE)) %>%
+            BeforeMean = mean(Before, na.rm = TRUE),
+            AfterMean = mean(After, na.rm = TRUE),
+            BeforeSD = sd(Before, na.rm = TRUE),
+            AfterSD = sd(After, na.rm = TRUE)) %>%
   pivot_longer(
-    cols = c(Before, After),
+    cols = c(BeforeMean,AfterMean,BeforeSD,AfterSD),
     names_to = "Timing",
     values_to = "Score")
 
@@ -66,10 +69,12 @@ means <- df_wide %>%
 meansNonmedics <- df_wide %>%
   filter(Role != "Crew Medic") %>%
   summarise(numSamples = length(After),
-            Before = mean(Before, na.rm = TRUE),
-            After = mean(After, na.rm = TRUE)) %>%
+            BeforeMean = mean(Before, na.rm = TRUE),
+            AfterMean = mean(After, na.rm = TRUE),
+            BeforeSD = sd(Before, na.rm = TRUE),
+            AfterSD = sd(After, na.rm = TRUE)) %>%
   pivot_longer(
-    cols = c(Before, After),
+    cols = c(BeforeMean,AfterMean,BeforeSD,AfterSD),
     names_to = "Timing",
     values_to = "Score")
 
@@ -78,10 +83,12 @@ meansNonmedics <- df_wide %>%
 meansMedics <- df_wide %>%
   filter(Role == "Crew Medic") %>%
   summarise(numSamples = length(After),
-            Before = mean(Before, na.rm = TRUE),
-            After = mean(After, na.rm = TRUE)) %>%
+            BeforeMean = mean(Before, na.rm = TRUE),
+            AfterMean = mean(After, na.rm = TRUE),
+            BeforeSD = sd(Before, na.rm = TRUE),
+            AfterSD = sd(After, na.rm = TRUE)) %>%
   pivot_longer(
-    cols = c(Before, After),
+    cols = c(BeforeMean,AfterMean,BeforeSD,AfterSD),
     names_to = "Timing",
     values_to = "Score")
 
@@ -90,44 +97,86 @@ print(means)
 print(meansNonmedics)
 print(meansMedics)
 
-# Tabulations per Question
-# test <- df %>%
-#   select(Timing, Role, Q20_1,Q20_2,Q20_3,Q20_4,Q20_5,Q20_6) %>%
-#   mutate(Role = ifelse(Role == "Crew Medic", "Medic", Role)) %>%
-#   mutate(Role = ifelse(Role != "Medic", "Non-Medic", Role)) %>%
-#   summarise(Non-MedicBefore = sum(Before, na.rm = TRUE),
-#             MedicBefore = sum(Before, na.rm = TRUE),
-#             Non-MedicAfter = sum(After, na.rm = TRUE),
-#             MedicAfter = sum(After, na.rm = TRUE)) %>%
-#   pivot_longer(
-#     cols = c(Before, After),
-#     names_to = "Timing",
-#     values_to = "Score")
+# ------------------------------------------------------------------------------
+### VISUALLIZATIONS ###
 
-# Labelling Question
-#labellingCols <- names(subset(df, select = c(Q20_1,Q20_2,Q20_3,Q20_4,Q20_5,Q20_6)))
+# Create density plots of final score based on role
+df %>%
+  ggplot(aes(x=Score, color=Timing)) + 
+  geom_density() +
+  geom_vline(data=means,aes(xintercept=Score,color=Timing),linetype="dashed") + 
+  scale_x_continuous(breaks = seq(0,25,1), limits = c(0,25)) +
+  labs(x="Total Score (out of 25)",
+       title="Assessment Score Density: All Participants")
+
+df %>%
+  filter(Role != "Crew Medic") %>%
+  ggplot(aes(x=Score, color=Timing)) + 
+  geom_density() +
+  geom_vline(data=meansNonmedics,aes(xintercept=Score,color=Timing),linetype="dashed") + 
+  scale_x_continuous(breaks = seq(0,25,1), limits = c(0,25)) +
+  labs(x="Total Score (out of 25)",
+       title="Assessment Score Density: Non-Medics")
+
+df %>%
+  filter(Role == "Crew Medic") %>%
+  ggplot(aes(x=Score, color=Timing)) + 
+  geom_density() +
+  geom_vline(data=meansMedics,aes(xintercept=Score,color=Timing),linetype="dashed") + 
+  scale_x_continuous(breaks = seq(0,25,1), limits = c(0,25)) +
+  labs(x="Total Score (out of 25)",
+       title="Assessment Score Density: Medics")
+
+# Boxplots showing medic vs non-medic performance before/after training module
+df %>%
+  mutate(Role = ifelse(Role == "Crew Medic", "Medic", Role)) %>%
+  mutate(Role = ifelse(Role != "Medic", "Non-Medic", Role)) %>%
+  mutate(Timing = factor(Timing, levels = c("Before", "After"))) %>%
+  mutate(Role = factor(Role, levels = c("Non-Medic", "Medic"))) %>%
+  ggplot(aes(x=Timing, y=Score, fill=Role)) + 
+  geom_boxplot() +
+  scale_x_discrete(labels = c("Before Training","After Training")) +
+  scale_y_continuous(breaks = seq(0,25,1), limits = c(0,25)) +
+  labs(x = "Testing Condition",
+       y="Total Score (out of 25)",
+       title="Assessment Scores Before vs. After Training Module")
 
 # ------------------------------------------------------------------------------
 ### ASSUMPTION CHECKS ###
 
-# QQPlot - normality
-df %>%
-  filter(Role != "Crew Medic") %>%
-  ggqqplot(x="Score", title = "Training Data QQPlot: Non-Medics")
+# For paired t-tests, assumption checks are performed on difference b/w pairs
+# Subtract before score from after score - difference is used for checks
+# Assumptions: 
+#   1) Continuous dependent variable (interval/ratio).
+#   2) Normally-distributed data (check visually & via Shapiro Wilk)
+#   3) Independent subjects with paired observations
+#   4) No outliers in dependent variable (differences between pairs)
+# If fails assumptions, would have to use paired two-samples Wilcoxon Test
 
-df %>%
-  ggqqplot(x="Score",title = "Training Data QQPlot: All Data")
+# Get differences
+df_assumptions <- df_wide %>%
+  mutate(Improvement = After-Before)
+
+# QQPlot for Normality
+# Normally-distributed data will appear within gray band if normally distributed
+df_assumptions %>%
+  filter(Role != "Crew Medic") %>%
+  ggqqplot(x="Improvement", title = "Training Improvement in Non-Medics: QQPlot")
 
 # Shapiro-Wilk for Normality
 # Note that p-value > 0.05 implies that the distribution of training data isn't  
 # significantly different from a theoretical normal distribution
-# Non-Medics only
-df %>%
+df_assumptions %>%
   filter(Role != "Crew Medic") %>%
-  shapiro_test(Score)
-# Overall
-df %>%
-  shapiro_test(Score)
+  shapiro_test(Improvement)
+
+# Grubb's Test for Outliers
+# Tests for outliers beyond a theoretical normal distribution
+# Note that p-value > 0.05 implies that the distribution of training data isn't  
+# significantly different from a theoretical normal distribution
+# "Type = 11" specifies Grubbs test for two opposite outliers
+grubbs.test(df_assumptions$Improvement[df_assumptions$Role != "Crew Medic"], 
+            type = 11)
 
 # ------------------------------------------------------------------------------
 ### RUN STATS ###
@@ -140,63 +189,43 @@ df %>%
 # Assumptions: 
 #   1) Normally-distributed data (checked visually & via Shapiro Wilk)
 #   2)  (checked via)
+# If not normal, would have used paired two-samples Wilcoxon Test
 
 df %>%
   filter(Role != "Crew Medic") %>%
   t.test(Score ~ Timing, data = ., alternative = 'greater', paired = TRUE)
-
-df %>%
-  t.test(Score ~ Timing, data = ., alternative = 'greater', paired = TRUE)
-
-# If not normal, use paired two-samples Wilcoxon Test
 
 # ------------------------------------------------------------------------------
-### CREATE PLOTS ###
-
-# Create density plots of final score based on role
-df %>%
-  ggplot(aes(x=Score, color=Timing)) + 
-  geom_density() +
-  geom_vline(data=means,aes(xintercept=Score,color=Timing),linetype="dashed") + 
-  scale_x_continuous(breaks = seq(0,26,2), limits = c(0,26)) +
-  labs(x="Total Score (out of 26)",
-       title="Assessment Score Density: All Participants")
+### FINAL PLOTS WITH STATISTICAL RESULTS ###
+stat.test <- df %>%
+  filter(Role != "Crew Medic") %>%
+  mutate(Timing = factor(Timing, levels = c("Before", "After"))) %>%
+  t_test(Score ~ Timing, alternative = 'less', paired=TRUE) %>%
+  add_significance() %>% 
+  add_xy_position(add_xy_position(x = "Timing"))
+stat.test
 
 df %>%
   filter(Role != "Crew Medic") %>%
-  ggplot(aes(x=Score, color=Timing)) + 
-  geom_density() +
-  geom_vline(data=meansNonmedics,aes(xintercept=Score,color=Timing),linetype="dashed") + 
-  scale_x_continuous(breaks = seq(0,26,2), limits = c(0,26)) +
-  labs(x="Total Score (out of 26)",
-       title="Assessment Score Density: Non-Medics")
-
-df %>%
-  filter(Role == "Crew Medic") %>%
-  ggplot(aes(x=Score, color=Timing)) + 
-  geom_density() +
-  geom_vline(data=meansMedics,aes(xintercept=Score,color=Timing),linetype="dashed") + 
-  scale_x_continuous(breaks = seq(0,26,2), limits = c(0,26)) +
-  labs(x="Total Score (out of 26)",
-       title="Assessment Score Density: Medics")
-  
-# Boxplots showing medic vs non-medic performance before/after training module
-df %>%
-  mutate(Role = ifelse(Role == "Crew Medic", "Medic", Role)) %>%
-  mutate(Role = ifelse(Role != "Medic", "Non-Medic", Role)) %>%
   mutate(Timing = factor(Timing, levels = c("Before", "After"))) %>%
-  mutate(Role = factor(Role, levels = c("Non-Medic", "Medic"))) %>%
-  ggplot(aes(x=Timing, y=Score, fill=Role)) + 
-  geom_boxplot() +
-  scale_x_discrete(labels = c("Before Training","After Training")) +
-  scale_y_continuous(breaks = seq(0,26,2), limits = c(0,26)) +
+  ggplot(aes(x=Timing, y=Score)) + 
+  geom_boxplot(aes(fill = Timing)) +
+  scale_x_discrete(labels = c("Pre-Training","Post-Training")) +
+  scale_y_continuous(breaks = seq(0,25,5), limits = c(0,25)) +
   labs(x = "Testing Condition",
-       y="Total Score (out of 26)",
-       title="Assessment Scores Before vs. After Training Module")
+       y=expression("Total Score " ~ italic("(out of 25)")),
+       title="Training Module Efficacy:\nPre- & Post-Assessment Scores") + 
+  theme(plot.title = element_text(hjust = 0.5,face = "bold"),
+        text = element_text(size = 20),
+        axis.title.x = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_rect(color = "grey",
+                                    fill = NA,
+                                    linewidth = 0.5),
+        panel.grid.major = element_line(color = "grey",
+                                        linewidth = 0.25,
+                                        linetype = 2),) +
+  guides(fill = "none") + 
+  stat_pvalue_manual(stat.test, label = "p = {p} {p.signif}", size = 5)
 
-# Boxplots of all questions 
-#names(subset(df, select = -c(ID,Date,Mission,Role,Timing,Duration,Score)))
-names(subset(df, select = c(ID,Date,Mission,Role,Timing,Duration,Score)))
-
-# Boxplots of label question (6 parts)
-labelCols <- names(subset(df, select = c(Q20_1,Q20_2,Q20_3,Q20_4,Q20_5,Q20_6)))
+  
