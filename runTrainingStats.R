@@ -1,6 +1,6 @@
 # AUTHOR:       Victoria Hurd
 # DATE CREATED: 11/25/25
-# LAST EDITED:  11/25/25
+# LAST EDITED:  12/04/25
 # PROJECT:      MDRS Teleguidance Study
 # TASK:         Running stats, generating plots for training efficacy
 # OUTPUTS:      Stats printouts and plots
@@ -98,7 +98,7 @@ print(meansNonmedics)
 print(meansMedics)
 
 # ------------------------------------------------------------------------------
-### VISUALLIZATIONS ###
+### VISUALIZATIONS ###
 
 # Create density plots of final score based on role
 df %>%
@@ -178,6 +178,12 @@ df_assumptions %>%
 grubbs.test(df_assumptions$Improvement[df_assumptions$Role != "Crew Medic"], 
             type = 11)
 
+# Let's also see if the after scores are normally distributed: 
+df_assumptions %>%
+  filter(Role != "Crew Medic") %>%
+  shapiro_test(After)
+# Note: after scores are also normally distributed around rounded score of 20 
+
 # ------------------------------------------------------------------------------
 ### RUN STATS ###
 
@@ -185,11 +191,6 @@ grubbs.test(df_assumptions$Improvement[df_assumptions$Role != "Crew Medic"],
 # Nonmedic before scores and after scores are the same (training module has no effect on "after" scores)
 # Alternative hypothesis: 
 # Nonmedic scores after training module are higher than those taken before (training module improves score)
-  
-# Assumptions: 
-#   1) Normally-distributed data (checked visually & via Shapiro Wilk)
-#   2)  (checked via)
-# If not normal, would have used paired two-samples Wilcoxon Test
 
 df %>%
   filter(Role != "Crew Medic") %>%
@@ -227,5 +228,4 @@ df %>%
                                         linetype = 2),) +
   guides(fill = "none") + 
   stat_pvalue_manual(stat.test, label = "p = {p} {p.signif}", size = 5)
-
   
