@@ -1,6 +1,6 @@
 # AUTHOR:       Victoria Hurd
 # DATE CREATED: 12/02/25
-# LAST EDITED:  12/03/25
+# LAST EDITED:  12/17/25
 # PROJECT:      MDRS Teleguidance Study
 # TASK:         Cleaning Demographics Data
 # OUTPUTS:      Cleaned Demographics Data Excel Sheet
@@ -9,7 +9,7 @@
 ### USER INPUTS ###
 
 # Name of raw knowledge assessment data from Qualtrics
-dataFile = 'MDRS Ultrasound Study Demographics Survey_November 24, 2025_14.03.xlsx'
+dataFile = 'MDRS Ultrasound Study Demographics Survey_December 17, 2025_10.29.xlsx'
 # Name of graded datafile to be outputted
 outputFile = "surveyData.xlsx"
 # Path to stored data
@@ -48,7 +48,30 @@ df <- read_excel(paste(dataPath,rawDataFolder,dataFile,sep = ""))
 # Clean Qualtrics data
 df <- cleanQualtrics(df)
 
-# Remove first row
-df <- df[-1, ]
-# Also drop duration (first col)
-df <- df[ ,-1]
+
+# Convert dates from Excel native numeric to simple %m/%d/Y via supporting func
+# Apply supporting function to entire recorded date column
+df$RecordedDate <- convertDate(df$RecordedDate)
+
+# Rename columns
+df <- df %>%
+  rename(Mission = `Crew Number: `,
+         Date = RecordedDate,
+         Role = `Mission Role:`,
+         Duration = `Duration (in seconds)`)
+
+# Clean mission into just week numerics
+pattern <- "\\s*\\([^)]+\\)"
+df$Mission <- gsub(pattern, "", df$Mission)
+df$Mission <- gsub("\\D+", "", df$Mission)
+
+# Change duration to mins
+df$Duration <- round(as.numeric(df$Duration)/60)
+
+# ------------------------------------------------------------------------------
+### TABULATE ###
+
+table(df$Mission,df$Role)
+table(df$Sex,df$Gender)
+
+print(mean(as.numeric(df$Duration)))

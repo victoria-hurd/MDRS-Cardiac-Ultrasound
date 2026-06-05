@@ -72,7 +72,7 @@ colnames(df)[colnames(df) == "Who"] <- "Role"
 colnames(df)[colnames(df) == "RecordedDate"] <- "Date"
 colnames(df)[colnames(df) == "Day of the Week"] <- "Day"
 colnames(df)[colnames(df) == "Scan Order"] <- "Order"
-labelCols = c("ID","Mission","Role","Date")
+labelCols = c("ID","Mission","Role","Date","Day")
 
 # Get standardized participant ID based on role/week
 df$ID <- mapply(getParticipantID, df$Role, df$Mission)
