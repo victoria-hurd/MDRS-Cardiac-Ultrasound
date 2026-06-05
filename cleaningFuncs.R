@@ -10,6 +10,12 @@ library(writexl)
 library(stringr)
 
 # ------------------------------------------------------------------------------
+### EXAMPLE ###
+example <- function(df) {
+    # New func
+  return(df)
+}
+# ------------------------------------------------------------------------------
 ### CLEAN QUALTRICS DATA ###
 cleanQualtrics <- function(df) {
   # Clean up Qualtrics exported data, including removing top row and 
